@@ -9,7 +9,6 @@ function deg2rad(angle) {
     return angle * Math.PI / 180;
 }
 
-
 // Constructor
 function Model(name) {
     this.name = name;
@@ -88,14 +87,63 @@ function draw() {
 
 function CreateSurfaceData()
 {
-    let vertexList = [];
+    let uVertexList = [];
+    let vVertexList = [];
+    const uSegments = 30; // Кількість сегментів уздовж t.
+    const vSegments = 30; // Кількість сегментів уздовж v.
 
-    for (let i=0; i<360; i+=5) {
-        vertexList.push( Math.sin(deg2rad(i)), 1, Math.cos(deg2rad(i)) );
-        vertexList.push( Math.sin(deg2rad(i)), 0, Math.cos(deg2rad(i)) );
+    // Константи поверхні
+    const scale = 0.5;
+    const a = 1.5 * scale, b = 3.0 * scale, c = 2.0 * scale, d = 2.0 * scale;
+
+    // Функція f(v)
+    function f(v) {
+        return (a * b) / Math.sqrt((a ** 2) * Math.sin(v) ** 2 + (b ** 2) * Math.cos(v) ** 2);
     }
 
-    return vertexList;
+    // Генерація поліліній уздовж t (U-полілінії)
+    for (let i = 0; i <= uSegments; i++) {
+        const t = (i / uSegments) * 2 * Math.PI; // t змінюється від 0 до 2π.
+
+        for (let j = 0; j <= vSegments; j++) {
+            const v = (j / vSegments) * 2 * Math.PI; // v змінюється від 0 до 2π.
+
+            const fv = f(v);
+            const cosT = Math.cos(t);
+            const sinT = Math.sin(t);
+            const cosV = Math.cos(v);
+            const sinV = Math.sin(v);
+
+            const x = 0.5 * (fv * (1 + cosT) + (d ** 2 - c ** 2) * (1 - cosT) / fv) * cosV;
+            const y = 0.5 * (fv * (1 + cosT) + (d ** 2 - c ** 2) * (1 - cosT) / fv) * sinV;
+            const z = 0.5 * (fv - (d ** 2 - c ** 2) / fv) * sinT;
+
+            uVertexList.push(x, y, z);
+        }
+    }
+
+    // Генерація поліліній уздовж v (V-полілінії)
+    for (let j = 0; j <= vSegments; j++) {
+        const v = (j / vSegments) * 2 * Math.PI; // v змінюється від 0 до 2π.
+
+        for (let i = 0; i <= uSegments; i++) {
+            const t = (i / uSegments) * 2 * Math.PI; // t змінюється від 0 до 2π.
+
+            const fv = f(v);
+            const cosT = Math.cos(t);
+            const sinT = Math.sin(t);
+            const cosV = Math.cos(v);
+            const sinV = Math.sin(v);
+
+            const x = 0.5 * (fv * (1 + cosT) + (d ** 2 - c ** 2) * (1 - cosT) / fv) * cosV;
+            const y = 0.5 * (fv * (1 + cosT) + (d ** 2 - c ** 2) * (1 - cosT) / fv) * sinV;
+            const z = 0.5 * (fv - (d ** 2 - c ** 2) / fv) * sinT;
+
+            vVertexList.push(x, y, z);
+        }
+    }
+
+    return {uVertexList, vVertexList};
 }
 
 
@@ -111,7 +159,8 @@ function initGL() {
     shProgram.iColor                     = gl.getUniformLocation(prog, "color");
 
     surface = new Model('Surface');
-    surface.BufferData(CreateSurfaceData());
+    const { uVertexList, vVertexList } = CreateSurfaceData();
+    surface.BufferData([...uVertexList, ...vVertexList]);
 
     gl.enable(gl.DEPTH_TEST);
 }
