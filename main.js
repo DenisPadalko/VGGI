@@ -12,24 +12,37 @@ function deg2rad(angle) {
 // Constructor
 function Model(name) {
     this.name = name;
-    this.iVertexBuffer = gl.createBuffer();
-    this.count = 0;
+    this.iUVertexBuffer = gl.createBuffer();
+    this.iVVertexBuffer = gl.createBuffer();
+    this.uVertexCount = 0;
+    this.vVertexCount = 0;
 
-    this.BufferData = function(vertices) {
+    this.BufferData = function(uVertices, vVertices) {
 
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.iVertexBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STREAM_DRAW);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.iUVertexBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(uVertices), gl.STREAM_DRAW);
 
-        this.count = vertices.length/3;
+        this.uVertexCount = uVertices.length/3;
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.iVVertexBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vVertices), gl.STREAM_DRAW);
+
+        this.vVertexCount = vVertices.length/3;
     }
 
     this.Draw = function() {
-
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.iVertexBuffer);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.iUVertexBuffer);
         gl.vertexAttribPointer(shProgram.iAttribVertex, 3, gl.FLOAT, false, 0, 0);
         gl.enableVertexAttribArray(shProgram.iAttribVertex);
    
-        gl.drawArrays(gl.LINE_STRIP, 0, this.count);
+        gl.drawArrays(gl.LINE_STRIP, 0, this.uVertexCount);
+
+        
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.iVVertexBuffer);
+        gl.vertexAttribPointer(shProgram.iAttribVertex, 3, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(shProgram.iAttribVertex);
+   
+        gl.drawArrays(gl.LINE_STRIP, 0, this.vVertexCount);
     }
 }
 
@@ -160,7 +173,7 @@ function initGL() {
 
     surface = new Model('Surface');
     const { uVertexList, vVertexList } = CreateSurfaceData();
-    surface.BufferData([...uVertexList, ...vVertexList]);
+    surface.BufferData(uVertexList, vVertexList);
 
     gl.enable(gl.DEPTH_TEST);
 }
