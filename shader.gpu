@@ -1,14 +1,32 @@
-
-
 // Vertex shader
 const vertexShaderSource = `
 attribute vec3 vertex;
+attribute vec3 normal;
 uniform mat4 ModelViewProjectionMatrix;
+uniform mat4 NormalMatrix;
+uniform vec3 LightPosition;
+uniform vec4 AmbientColor;
+uniform vec4 DiffuseColor;
+uniform vec4 SpecularColor;
+uniform float Shininess;
+
+varying vec4 vColor;
 
 void main() {
-    gl_Position = ModelViewProjectionMatrix * vec4(vertex,1.0);
-}`;
+    vec4 transformedNormal = NormalMatrix * vec4(normal, 0.0);
+    vec3 lightVector = normalize(LightPosition - vec3(vertex));
+    vec3 viewVector = normalize(-vec3(vertex));
+    vec3 reflectVector = reflect(-lightVector, vec3(transformedNormal));
 
+    float diffuse = max(dot(vec3(transformedNormal), lightVector), 0.0);
+    float specular = 0.0;
+    if (diffuse > 0.0) {
+        specular = pow(max(dot(reflectVector, viewVector), 0.0), Shininess);
+    }
+
+    vColor = AmbientColor + diffuse * DiffuseColor + specular * SpecularColor;
+    gl_Position = ModelViewProjectionMatrix * vec4(vertex, 1.0);
+}`;
 
 // Fragment shader
 const fragmentShaderSource = `
@@ -18,7 +36,8 @@ const fragmentShaderSource = `
    precision mediump float;
 #endif
 
-uniform vec4 color;
+varying vec4 vColor;
+
 void main() {
-    gl_FragColor = color;
+    gl_FragColor = vColor;
 }`;
