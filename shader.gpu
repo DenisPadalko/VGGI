@@ -2,6 +2,10 @@
 const vertexShaderSource = `
 attribute vec3 vertex;
 attribute vec3 normal;
+attribute vec2 texCoord;
+attribute vec3 tangent;
+attribute vec3 bitangent;
+
 uniform mat4 ModelViewProjectionMatrix;
 uniform mat4 NormalMatrix;
 uniform vec3 LightPosition;
@@ -10,21 +14,30 @@ uniform vec4 DiffuseColor;
 uniform vec4 SpecularColor;
 uniform float Shininess;
 
-varying vec4 vColor;
+varying vec2 vTexCoord;
+varying vec3 vLightVector;
+varying vec3 vViewVector;
+varying vec3 vNormal;
+varying vec3 vTangent;
+varying vec3 vBitangent;
 
 void main() {
     vec4 transformedNormal = NormalMatrix * vec4(normal, 0.0);
+    vec4 transformedTangent = NormalMatrix * vec4(tangent, 0.0);
+    vec4 transformedBitangent = NormalMatrix * vec4(bitangent, 0.0);
+
+    vNormal = transformedNormal.xyz;
+    vTangent = transformedTangent.xyz;
+    vBitangent = transformedBitangent.xyz;
+
+    vTexCoord = texCoord;
+
     vec3 lightVector = normalize(LightPosition - vec3(vertex));
+    vLightVector = lightVector;
+
     vec3 viewVector = normalize(-vec3(vertex));
-    vec3 reflectVector = reflect(-lightVector, vec3(transformedNormal));
+    vViewVector = viewVector;
 
-    float diffuse = max(dot(vec3(transformedNormal), lightVector), 0.0);
-    float specular = 0.0;
-    if (diffuse > 0.0) {
-        specular = pow(max(dot(reflectVector, viewVector), 0.0), Shininess);
-    }
-
-    vColor = AmbientColor + diffuse * DiffuseColor + specular * SpecularColor;
     gl_Position = ModelViewProjectionMatrix * vec4(vertex, 1.0);
 }`;
 
@@ -36,8 +49,50 @@ const fragmentShaderSource = `
    precision mediump float;
 #endif
 
-varying vec4 vColor;
+uniform vec4 AmbientColor;
+uniform vec4 DiffuseColor;
+uniform vec4 SpecularColor;
+uniform float Shininess;
+
+uniform sampler2D iTMU0; // Diffuse texture
+uniform sampler2D iTMU1; // Specular texture
+uniform sampler2D iTMU2; // Normal map
+
+varying vec2 vTexCoord;
+varying vec3 vLightVector;
+varying vec3 vViewVector;
+varying vec3 vNormal;
+varying vec3 vTangent;
+varying vec3 vBitangent;
 
 void main() {
-    gl_FragColor = vColor;
+    // Sampling the normal map texture
+    vec3 normalMap = texture2D(iTMU2, vTexCoord).rgb;
+    normalMap = normalMap * 2.0 - 1.0;
+
+    // Constructing the TBN matrix
+    mat3 TBN = mat3(vTangent, vBitangent, vNormal);
+    vec3 normal = normalize(TBN * normalMap);
+
+    // Calculating vectors
+    vec3 lightVector = normalize(vLightVector);
+    vec3 viewVector = normalize(vViewVector);
+    vec3 reflectVector = reflect(-lightVector, normal);
+
+    // Diffuse and specular calculations
+    float diffuse = max(dot(normal, lightVector), 0.0);
+    float specular = 0.0;
+    if (diffuse > 0.0) {
+        specular = pow(max(dot(reflectVector, viewVector), 0.0), Shininess);
+    }
+
+    // Sampling the diffuse and specular textures
+    vec4 ambient = AmbientColor;
+    vec4 diffuseColor = texture2D(iTMU0, vTexCoord) * DiffuseColor;
+    vec4 specularColor = texture2D(iTMU1, vTexCoord) * SpecularColor;
+
+    // Combining colors
+    vec4 color = ambient + diffuse * diffuseColor + specular * specularColor;
+
+    gl_FragColor = color;
 }`;
