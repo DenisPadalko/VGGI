@@ -4,12 +4,48 @@ let gl;                         // The webgl context.
 let surface;                    // A surface model
 let shProgram;                  // A shader program
 let spaceball;                  // A SimpleRotator object that lets the user rotate the view by mouse.
-let uSegments = 30;          // U granularity
-let vSegments = 30;          // V granularity
+let uSegments = 30;             // U granularity
+let vSegments = 30;             // V granularity
 let lightAngle = 0;             // Light angle
+let rotationPoint = { u: -0.1, v: -0.1 }; // Point around which to rotate the texture coordinates
+let textureScale = 1.0;         // Texture scaling factor
+let rotationAngle = 0;          // Rotation angle in radians
 
 function deg2rad(angle) {
     return angle * Math.PI / 180;
+}
+
+// Function to handle keyboard input for moving the rotation point
+function handleKeydown(event) {
+    const step = 0.01;
+    switch (event.key) {
+        case 'a':
+            rotationPoint.u = Math.max(0, rotationPoint.u - step);
+            console.log(rotationPoint.u, " ", rotationPoint.v);
+            break;
+        case 'd':
+            rotationPoint.u = Math.min(1, rotationPoint.u + step);
+            break;
+        case 'w':
+            rotationPoint.v = Math.max(0, rotationPoint.v - step);
+            break;
+        case 's':
+            rotationPoint.v = Math.min(1, rotationPoint.v + step);
+            break;
+        case 'q':
+            rotationAngle -= 0.01;
+            break;
+        case 'e':
+            rotationAngle += 0.01;
+            break;
+        case 'z':
+            textureScale = Math.max(0.1, textureScale - 0.1);
+            break;
+        case 'x':
+            textureScale += 0.1;
+            break;
+    }
+    draw();
 }
 
 // Constructor
@@ -140,6 +176,9 @@ function ShaderProgram(name, program) {
     this.iTMU0 = -1;
     this.iTMU1 = -1;
     this.iTMU2 = -1;
+    this.iRotationPoint = -1;
+    this.iRotationAngle = -1;
+    this.iTextureScale = -1;
 
     this.Use = function() {
         gl.useProgram(this.prog);
@@ -169,6 +208,10 @@ function draw() {
     lightAngle += 0.01;
     let lightPosition = [10 * Math.cos(lightAngle), 5, 10 * Math.sin(lightAngle)];
     gl.uniform3fv(shProgram.iLightPosition, lightPosition);
+
+    gl.uniform2fv(shProgram.iRotationPoint, [rotationPoint.u, rotationPoint.v]);
+    gl.uniform1f(shProgram.iRotationAngle, rotationAngle);
+    gl.uniform1f(shProgram.iTextureScale, textureScale);
 
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, surface.idTextureDiffuse);
@@ -422,6 +465,9 @@ function initGL() {
     shProgram.iTMU0 = gl.getUniformLocation(prog, "iTMU0");
     shProgram.iTMU1 = gl.getUniformLocation(prog, "iTMU1");
     shProgram.iTMU2 = gl.getUniformLocation(prog, "iTMU2");
+    shProgram.iRotationPoint = gl.getUniformLocation(prog, "RotationPoint");
+    shProgram.iRotationAngle = gl.getUniformLocation(prog, "RotationAngle");
+    shProgram.iTextureScale = gl.getUniformLocation(prog, "TextureScale");
 
     shProgram.Use();
     gl.uniform4fv(shProgram.iAmbientColor, [0.2, 0.2, 0.2, 1.0]);
@@ -469,7 +515,7 @@ function updateGranularity() {
 
     uSegments = parseInt(uSlider.value, 10);
     vSegments = parseInt(vSlider.value, 10);
-    
+
     const { uVertices, vVertices, uIndices, vIndices, uNormals, vNormals, uTexCoords, vTexCoords, uTangents, vTangents, uBitangents, vBitangents } = CreateSurfaceData();
     surface.BufferData(uVertices, vVertices, uIndices, vIndices, uNormals, vNormals, uTexCoords, vTexCoords, uTangents, vTangents, uBitangents, vBitangents);
     draw();
@@ -507,6 +553,9 @@ function init() {
 
     document.getElementById("uGranularity").addEventListener("input", updateGranularity);
     document.getElementById("vGranularity").addEventListener("input", updateGranularity);
+
+    // Add event listener for keyboard input
+    window.addEventListener('keydown', handleKeydown);
 
     animate();
 }
