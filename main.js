@@ -7,8 +7,7 @@ let spaceball;                  // A SimpleRotator object that lets the user rot
 let uSegments = 30;             // U granularity
 let vSegments = 30;             // V granularity
 let lightAngle = 0;             // Light angle
-let rotationPoint = { u: -0.1, v: -0.1 }; // Point around which to rotate the texture coordinates
-let textureScale = 1.0;         // Texture scaling factor
+let rotationPoint = { u: -0.1, v: -0.1, w: -0.1 }; // Point around which to rotate the texture coordinates
 let rotationAngle = 0;          // Rotation angle in radians
 
 function deg2rad(angle) {
@@ -20,29 +19,22 @@ function handleKeydown(event) {
     const step = 0.01;
     switch (event.key) {
         case 'a':
-            rotationPoint.u = Math.max(0, rotationPoint.u - step);
-            console.log(rotationPoint.u, " ", rotationPoint.v);
+            rotationPoint.u = rotationPoint.u - step;
             break;
         case 'd':
-            rotationPoint.u = Math.min(1, rotationPoint.u + step);
+            rotationPoint.u = rotationPoint.u + step;
             break;
         case 'w':
-            rotationPoint.v = Math.max(0, rotationPoint.v - step);
+            rotationPoint.v = rotationPoint.v + step;
             break;
         case 's':
-            rotationPoint.v = Math.min(1, rotationPoint.v + step);
+            rotationPoint.v = rotationPoint.v - step;
             break;
         case 'q':
             rotationAngle -= 0.01;
             break;
         case 'e':
             rotationAngle += 0.01;
-            break;
-        case 'z':
-            textureScale = Math.max(0.1, textureScale - 0.1);
-            break;
-        case 'x':
-            textureScale += 0.1;
             break;
     }
     draw();
@@ -178,7 +170,6 @@ function ShaderProgram(name, program) {
     this.iTMU2 = -1;
     this.iRotationPoint = -1;
     this.iRotationAngle = -1;
-    this.iTextureScale = -1;
 
     this.Use = function() {
         gl.useProgram(this.prog);
@@ -211,7 +202,6 @@ function draw() {
 
     gl.uniform2fv(shProgram.iRotationPoint, [rotationPoint.u, rotationPoint.v]);
     gl.uniform1f(shProgram.iRotationAngle, rotationAngle);
-    gl.uniform1f(shProgram.iTextureScale, textureScale);
 
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, surface.idTextureDiffuse);
@@ -226,6 +216,33 @@ function draw() {
     gl.uniform1i(shProgram.iTMU2, 2);
 
     surface.Draw();
+
+    drawRotationPoint();
+}
+
+function drawRotationPoint() {
+    const size = 1.0;
+    const vertices = [
+        rotationPoint.u - size, rotationPoint.v - size, 0.0,
+        rotationPoint.u + size, rotationPoint.v - size, 0.0,
+        rotationPoint.u + size, rotationPoint.v + size, 0.0,
+        rotationPoint.u - size, rotationPoint.v + size, 0.0,
+    ];
+
+    const indices = [0, 1, 2, 0, 2, 3];
+
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+
+    const indexBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+
+    gl.vertexAttribPointer(shProgram.iAttribVertex, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(shProgram.iAttribVertex);
+
+    gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
 }
 
 function normalize(vec) {

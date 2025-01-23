@@ -15,7 +15,6 @@ uniform vec4 SpecularColor;
 uniform float Shininess;
 uniform vec2 RotationPoint;
 uniform float RotationAngle;
-uniform float TextureScale;
 
 varying vec2 vTexCoord;
 varying vec3 vLightVector;
@@ -33,11 +32,8 @@ void main() {
     vTangent = transformedTangent.xyz;
     vBitangent = transformedBitangent.xyz;
 
-    // Apply texture scaling
-    vec2 scaledTexCoord = texCoord * TextureScale;
-
     // Translate texture coordinates to origin
-    vec2 translatedTexCoord = scaledTexCoord - RotationPoint;
+    vec2 translatedTexCoord = texCoord - RotationPoint;
 
     // Apply rotation
     float cosAngle = cos(RotationAngle);
